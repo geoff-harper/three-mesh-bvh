@@ -12,7 +12,7 @@ import {
 
 const params = {
 
-	toolMode: 'lasso',
+	toolMode: 'box',
 	selectionMode: 'intersection',
 	liveUpdate: false,
 	selectModel: false,
@@ -21,7 +21,7 @@ const params = {
 
 	displayHelper: false,
 	helperDepth: 10,
-	rotate: true,
+	rotate: false,
 
 };
 
@@ -420,14 +420,42 @@ const lassoSegments = [];
 const perBoundsSegments = [];
 function updateSelection() {
 
+
+	const rc = new THREE.Raycaster();
+	for ( let i = 0; i < selectionPoints.length / 3; i ++ ) {
+
+		const x = selectionPoints[ i * 3 ];
+		const y = selectionPoints[ i * 3 + 1 ];
+		console.log( 'x, y', x, y );
+
+		rc.setFromCamera( new THREE.Vector2( x, y ), camera );
+		const hits = rc.intersectObject( mesh );
+		console.log( 'hits', hits );
+
+		const bubble = new THREE.Mesh( new THREE.SphereGeometry( 0.01 ), new THREE.MeshStandardMaterial( { color: '#f00' } ) );
+		group.add( bubble );
+		hits[ 0 ] && bubble.position.copy( hits[ 0 ].point );
+
+	}
+
+
 	// TODO: Possible improvements
 	// - Correctly handle the camera near clip
 	// - Improve line line intersect performance?
+	const vertices = mesh.geometry.attributes.position.array;
 
+	console.log( 'mesh.matrixWorld', mesh.matrixWorld );
+	console.log( 'camera.matrixWorldInverse', camera.matrixWorldInverse );
+	console.log( 'camera.projectionMatrix', camera.projectionMatrix );
 	toScreenSpaceMatrix
 		.copy( mesh.matrixWorld )
 		.premultiply( camera.matrixWorldInverse )
 		.premultiply( camera.projectionMatrix );
+
+	const v = new THREE.Vector3( vertices[ 0 ], vertices[ 1 ], vertices[ 2 ] );
+
+	// console.log( 'ssm', v.clone().applyMatrix4( toScreenSpaceMatrix ).toArray() );
+	// console.log( 'cam', v.clone().project( camera ).toArray() );
 
 	// create scratch points and lines to use for selection
 	while ( lassoSegments.length < selectionPoints.length ) {
@@ -483,12 +511,15 @@ function updateSelection() {
 						v.y = y === 0 ? min.y : max.y;
 						v.z = z === 0 ? min.z : max.z;
 						v.w = 1;
+						// console.log( 'v1', v.toArray().toString() );
 						v.applyMatrix4( toScreenSpaceMatrix );
 						index ++;
 
 						if ( v.y < minY ) minY = v.y;
 						if ( v.y > maxY ) maxY = v.y;
 						if ( v.x < minX ) minX = v.x;
+
+						// console.log( 'v2', v.toArray().toString() );
 
 					}
 
